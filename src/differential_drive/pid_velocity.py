@@ -99,7 +99,6 @@ class PidVelocity(Node):
             # only do the calc if we've recently recieved a target velocity message
             self.calc_velocity()
             self.do_pid()
-            print(self.motor)
             msg.data = self.motor
 
         self.pub_motor.publish(msg)
@@ -136,7 +135,6 @@ class PidVelocity(Node):
             self.wheel_prev = self.wheel_latest
             self.then = self.get_clock().now()
 
-        # print(self.vel)
         msg = Float32()
         msg.data = self.vel
         self.pub_vel.publish(msg)
@@ -199,7 +197,6 @@ def main(args=None):
     rclpy.init(args=args)
     try:
         pid_velocity = PidVelocity()
-        # pid_velocity.spin()
         rclpy.spin(pid_velocity)
     except rclpy.exceptions.ROSInterruptException:
         pass
