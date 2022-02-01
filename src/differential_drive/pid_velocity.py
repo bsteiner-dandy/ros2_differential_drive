@@ -36,7 +36,7 @@ class PidVelocity(Node):
 
         ### initialize variables
         self.target = 0
-        self.motor = 0
+        self.motor = 0.0
         self.vel = 0
         self.integral = 0
         self.error = 0
@@ -77,37 +77,37 @@ class PidVelocity(Node):
         self.pub_motor = self.create_publisher(Float32, 'motor_cmd', 10)
         self.pub_vel = self.create_publisher(Float32, 'wheel_vel', 10)
 
-    def spin(self):
+        self.tmr = self.create_timer(0.001, self.timer_callback)
+
         self.r = self.create_rate(self.rate)
         self.then = self.get_clock().now()
         self.ticks_since_target = self.timeout_ticks
         self.wheel_prev = self.wheel_latest
         self.then = self.get_clock().now()
-        while rclpy.ok():
-            self.spin_once()
-            self.r.sleep()
 
-    def spin_once(self):
-        self.previous_error = 0.0
-        self.prev_vel = [0.0] * self.rolling_pts
-        self.integral = 0.0
-        self.error = 0.0
-        self.derivative = 0.0
-        self.vel = 0.0
-
-        # only do the loop if we've recently recieved a target velocity message
-        while rclpy.ok() and self.ticks_since_target < self.timeout_ticks:
+    def timer_callback(self):
+        msg = Float32()
+        if self.ticks_since_target >= self.timeout_ticks:
+            self.previous_error = 0.0
+            self.prev_vel = [0.0] * self.rolling_pts
+            self.integral = 0.0
+            self.error = 0.0
+            self.derivative = 0.0
+            self.vel = 0.0
+            msg.data = 0.0
+        else:
+            # only do the calc if we've recently recieved a target velocity message
             self.calc_velocity()
             self.do_pid()
-            self.pub_motor.publish(self.motor)
-            self.r.sleep()
-            self.ticks_since_target += 1
-            if self.ticks_since_target == self.timeout_ticks:
-                self.pub_motor.publish(0)
+            print(self.motor)
+            msg.data = self.motor
+
+        self.pub_motor.publish(msg)
+        self.ticks_since_target += 1
 
     def calc_velocity(self):
         self.dt_duration = self.get_clock().now() - self.then
-        self.dt = self.dt_duration.to_sec()
+        self.dt = self.dt_duration.nanoseconds / 1e9
         self.get_logger().debug("-D- %s caclVelocity dt=%0.3f wheel_latest=%0.3f wheel_prev=%0.3f" % (
             self.nodename, self.dt, self.wheel_latest, self.wheel_prev))
 
@@ -117,8 +117,8 @@ class PidVelocity(Node):
             if abs(cur_vel) < self.vel_threshold:
                 # if the velocity is < threshold, consider our velocity 0
                 self.get_logger().debug("-D- %s below threshold cur_vel=%0.3f vel=0" % (self.nodename, cur_vel))
-                self.appendVel(0)
-                self.calcRollingVel()
+                self.append_vel(0)
+                self.calc_rolling_vel()
             else:
                 self.get_logger().debug("-D- %s above threshold cur_vel=%0.3f" % (self.nodename, cur_vel))
                 if abs(cur_vel) < self.vel:
@@ -136,7 +136,10 @@ class PidVelocity(Node):
             self.wheel_prev = self.wheel_latest
             self.then = self.get_clock().now()
 
-        self.pub_vel.publish(self.vel)
+        # print(self.vel)
+        msg = Float32()
+        msg.data = self.vel
+        self.pub_vel.publish(msg)
 
     def append_vel(self, val):
         self.prev_vel.append(val)
@@ -148,7 +151,7 @@ class PidVelocity(Node):
 
     def do_pid(self):
         pid_dt_duration = self.get_clock().now() - self.prev_pid_time
-        pid_dt = pid_dt_duration.to_sec()
+        pid_dt = pid_dt_duration.nanoseconds / 1e9
         self.prev_pid_time = self.get_clock().now()
 
         self.error = self.target - self.vel
@@ -167,7 +170,7 @@ class PidVelocity(Node):
             self.integral = self.integral - (self.error * pid_dt)
 
         if self.target == 0:
-            self.motor = 0
+            self.motor = 0.0
 
         self.get_logger().debug("vel:%0.2f tar:%0.2f err:%0.2f int:%0.2f der:%0.2f ## motor:%d " %
                        (self.vel, self.target, self.error, self.integral, self.derivative, self.motor))
@@ -196,7 +199,8 @@ def main(args=None):
     rclpy.init(args=args)
     try:
         pid_velocity = PidVelocity()
-        pid_velocity.spin()
+        # pid_velocity.spin()
+        rclpy.spin(pid_velocity)
     except rclpy.exceptions.ROSInterruptException:
         pass
 
