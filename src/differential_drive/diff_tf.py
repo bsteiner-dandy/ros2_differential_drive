@@ -55,14 +55,15 @@ from nav_msgs.msg import Odometry
 from tf2_ros import TransformBroadcaster
 from std_msgs.msg import Int16
 
-NS_TO_SEC= 1000000000
+NS_TO_SEC = 1000000000
+
 
 class DiffTf(Node):
     """
-       diff_tf.py - follows the output of a wheel encoder and
-       creates tf and odometry messages.
-       some code borrowed from the arbotix diff_controller script
-       A good reference: http://rossum.sourceforge.net/papers/DiffSteer/
+    diff_tf.py - follows the output of a wheel encoder and
+    creates tf and odometry messages.
+    some code borrowed from the arbotix diff_controller script
+    A good reference: http://rossum.sourceforge.net/papers/DiffSteer/
     """
 
     def __init__(self):
@@ -71,24 +72,35 @@ class DiffTf(Node):
         self.get_logger().info(f"-I- {self.nodename} started")
 
         #### parameters #######
-        self.rate_hz = self.declare_parameter("rate_hz", 10.0).value # the rate at which to publish the transform
-        self.create_timer(1.0/self.rate_hz, self.update)  
+        self.rate_hz = self.declare_parameter(
+            "rate_hz", 10.0
+        ).value  # the rate at which to publish the transform
+        self.create_timer(1.0 / self.rate_hz, self.update)
 
         self.ticks_meter = float(
-            self.declare_parameter('ticks_meter', 50).value)  # The number of wheel encoder ticks per meter of travel
-        self.base_width = float(self.declare_parameter('base_width', 0.245).value)  # The wheel base width in meters
+            self.declare_parameter("ticks_meter", 50).value
+        )  # The number of wheel encoder ticks per meter of travel
+        self.base_width = float(
+            self.declare_parameter("base_width", 0.245).value
+        )  # The wheel base width in meters
 
-        self.base_frame_id = self.declare_parameter('base_frame_id',
-                                                    'base_link').value  # the name of the base frame of the robot
-        self.odom_frame_id = self.declare_parameter('odom_frame_id',
-                                                    'odom').value  # the name of the odometry reference frame
+        self.base_frame_id = self.declare_parameter(
+            "base_frame_id", "base_footprint"
+        ).value  # the name of the base frame of the robot
+        self.odom_frame_id = self.declare_parameter(
+            "odom_frame_id", "odom"
+        ).value  # the name of the odometry reference frame
 
-        self.encoder_min = self.declare_parameter('encoder_min', -32768).value
-        self.encoder_max = self.declare_parameter('encoder_max', 32768).value
-        self.encoder_low_wrap = self.declare_parameter('wheel_low_wrap', (
-                self.encoder_max - self.encoder_min) * 0.3 + self.encoder_min).value
-        self.encoder_high_wrap = self.declare_parameter('wheel_high_wrap', (
-                self.encoder_max - self.encoder_min) * 0.7 + self.encoder_min).value
+        self.encoder_min = self.declare_parameter("encoder_min", -32768).value
+        self.encoder_max = self.declare_parameter("encoder_max", 32768).value
+        self.encoder_low_wrap = self.declare_parameter(
+            "wheel_low_wrap",
+            (self.encoder_max - self.encoder_min) * 0.3 + self.encoder_min,
+        ).value
+        self.encoder_high_wrap = self.declare_parameter(
+            "wheel_high_wrap",
+            (self.encoder_max - self.encoder_min) * 0.7 + self.encoder_min,
+        ).value
 
         # internal data
         self.enc_left = None  # wheel encoder readings
@@ -110,8 +122,7 @@ class DiffTf(Node):
         self.create_subscription(Int16, "lwheel", self.lwheel_callback, 10)
         self.create_subscription(Int16, "rwheel", self.rwheel_callback, 10)
         self.odom_pub = self.create_publisher(Odometry, "odom", 10)
-        self.odom_broadcaster = TransformBroadcaster(self)
-
+        # self.odom_broadcaster = TransformBroadcaster(self)
 
     def update(self):
         now = self.get_clock().now()
@@ -129,7 +140,7 @@ class DiffTf(Node):
         self.enc_left = self.left
         self.enc_right = self.right
 
-        # distance traveled is the average of the two wheels 
+        # distance traveled is the average of the two wheels
         d = (d_left + d_right) / 2
         # this approximation works (in radians) for small angles
         th = (d_right - d_left) / self.base_width
@@ -154,10 +165,10 @@ class DiffTf(Node):
         quaternion.z = sin(self.th / 2)
         quaternion.w = cos(self.th / 2)
 
-        transform_stamped_msg = TransformStamped()
+        """ transform_stamped_msg = TransformStamped()
         transform_stamped_msg.header.stamp = self.get_clock().now().to_msg()
-        transform_stamped_msg.header.frame_id = self.base_frame_id
-        transform_stamped_msg.child_frame_id = self.odom_frame_id
+        transform_stamped_msg.header.frame_id = self.odom_frame_id
+        transform_stamped_msg.child_frame_id = self.base_frame_id
         transform_stamped_msg.transform.translation.x = self.x
         transform_stamped_msg.transform.translation.y = self.y
         transform_stamped_msg.transform.translation.z = 0.0
@@ -167,6 +178,7 @@ class DiffTf(Node):
         transform_stamped_msg.transform.rotation.w = quaternion.w
 
         self.odom_broadcaster.sendTransform(transform_stamped_msg)
+        """
 
         odom = Odometry()
         odom.header.stamp = now.to_msg()
@@ -216,5 +228,5 @@ def main(args=None):
     rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
