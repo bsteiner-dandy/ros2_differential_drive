@@ -44,6 +44,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+from shutil import register_unpack_format
 import rclpy
 from rclpy.node import Node
 from math import sin, cos, pi
@@ -105,8 +106,8 @@ class DiffTf(Node):
         # internal data
         self.enc_left = None  # wheel encoder readings
         self.enc_right = None
-        self.left = 0.0  # actual values coming back from robot
-        self.right = 0.0
+        self.left = None  # actual values coming back from robot
+        self.right = None
         self.lmult = 0.0
         self.rmult = 0.0
         self.prev_lencoder = 0
@@ -130,6 +131,9 @@ class DiffTf(Node):
         self.then = now
         elapsed = elapsed.nanoseconds / NS_TO_SEC
 
+        if self.left is None or self.right is None:
+            return
+            
         # calculate odometry
         if self.enc_left == None:
             d_left = 0
